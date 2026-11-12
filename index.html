@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="id"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- ===== UBAH TAUTAN APPS SCRIPT DI BARIS BAWAH INI SAJA ===== -->
+<script>const API_URL='https://script.google.com/macros/s/AKfycby1YAAvFD65-6B6FQqwrXMOOAvEFn8kbYiM9OgthMyqAm41UFZPOWqt60zU17B2V-J0OQ/exec';</script>
 <title>Latihan Soal IPA Kelas 9</title>
 <style>
 :root{--bg:#f4f7fb;--card:#fff;--tx:#1b2a3a;--mu:#5b6b7c;--bd:#d6dee8;--pr:#0a7e8c;--ok:#1a8f4a;--bad:#c0392b;--hl:#e6f6f8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -86,14 +88,13 @@ function login(mode='siswa',err=''){
  (mode=='siswa'?`<label>Nama lengkap</label><input id="n" autocomplete="off"><label>Nomor presensi</label><input id="p" type="number" min="1"><label>Kelas</label><input id="k" placeholder="contoh: 9A"><label>PIN (dari guru)</label><input id="pin" type="password"><button style="margin-top:14px;width:100%" onclick="siswa()">Mulai Mengerjakan</button><p class="meta">${Q.length} soal pilihan ganda • waktu 90 menit • jangan membuka tab baru atau berpindah jendela, jika tidak pengerjaan akan diulang dari awal.</p>`
  :`<label>Username</label><input id="gu" autocomplete="off"><label>Password</label><input id="gp" type="password"><button style="margin-top:14px;width:100%" onclick="guru()">Masuk</button>`)+
  `<div class="err">${err}</div></div>`}
+function api(fn,args){return fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,args})}).then(r=>r.json()).then(j=>{if(!j.ok)throw new Error(j.error);return j.data})}
 let G=null;
 function siswa(){const n=$('n').value.trim(),p=$('p').value.trim(),k=$('k').value.trim(),pin=$('pin').value;
  if(!n||!p||!k)return login('siswa','Nama, nomor presensi, dan kelas wajib diisi.');
- google.script.run.withSuccessHandler(ok=>{if(!ok)return login('siswa','PIN salah. Tanyakan PIN kepada guru.');U={n,p,k};startQuiz()})
-  .withFailureHandler(e=>login('siswa','Gagal terhubung ke server: '+e.message)).cekPin(pin)}
+ api('cekPin',[pin]).then(ok=>{if(!ok)return login('siswa','PIN salah. Tanyakan PIN kepada guru.');U={n,p,k};startQuiz()}).catch(e=>login('siswa','Gagal terhubung ke server: '+e.message))}
 function guru(){const u=$('gu').value.trim(),p=$('gp').value;
- google.script.run.withSuccessHandler(ok=>{if(!ok)return login('guru','Username atau password salah.');G={u,p};panel()})
-  .withFailureHandler(e=>login('guru','Gagal terhubung ke server: '+e.message)).loginGuru(u,p)}
+ api('loginGuru',[u,p]).then(ok=>{if(!ok)return login('guru','Username atau password salah.');G={u,p};panel()}).catch(e=>login('guru','Gagal terhubung ke server: '+e.message))}
 function startQuiz(){A={};cur=0;left=DUR;live=true;$('bar').classList.remove('hide');$('who').textContent=U.n+' • '+U.k+' • No. '+U.p;
  clearInterval(tid);tid=setInterval(()=>{left--;tick();if(left<=0)finish()},1000);tick();render()}
 function tick(){const m=Math.floor(left/60),s=left%60;$('tm').textContent=m+':'+String(s).padStart(2,'0');}
@@ -113,7 +114,7 @@ function pick(i){A[cur]=Object.assign(A[cur]||{},{sel:i});render()}
 function go(i){cur=i;render();scrollTo(0,0)}
 function finish(){clearInterval(tid);live=false;const s=score(),b=Q.filter((q,i)=>A[i]&&A[i].sel===q[6]).length;
  const rec={n:U.n,p:U.p,k:U.k,s,b,t:Object.values(A).filter(x=>x.sel!==undefined).length,a:Q.map((q,i)=>A[i]&&A[i].sel!==undefined?L[A[i].sel]:'-'),w:Q.map((q,i)=>q[7]?(A[i]&&A[i].w||''):'')};
- google.script.run.withSuccessHandler(()=>{const e=$('st');if(e)e.textContent='✅ Hasil tersimpan.'}).withFailureHandler(er=>{const e=$('st');if(e)e.textContent='⚠️ Gagal menyimpan: '+er.message+'. Beritahu guru.'}).simpanHasil(rec);
+ api('simpanHasil',[rec]).then(()=>{const e=$('st');if(e)e.textContent='✅ Hasil tersimpan.'}).catch(er=>{const e=$('st');if(e)e.textContent='⚠️ Gagal menyimpan: '+er.message+'. Beritahu guru.'});
  $('bar').classList.add('hide');
  app.innerHTML=`<div class="card" style="text-align:center"><h2>Latihan selesai 🎉</h2><p>${U.n} • Kelas ${U.k} • No. ${U.p}</p><div style="font-size:3rem;font-weight:800;color:var(--pr)">${s}</div><p>Jawaban benar: ${b} dari ${Q.length} soal<br>Terjawab: ${Object.values(A).filter(x=>x.sel!==undefined).length} soal</p><p id="st" class="meta">Menyimpan hasil ke Google Sheet...</p><button onclick="login()">Kembali ke halaman login</button></div>`}
 function violation(){if(!live)return;live=false;clearInterval(tid);showModal('⚠️ Peringatan!','Terdeteksi berpindah tab/jendela. Pengerjaan diulang dari awal.');setTimeout(()=>{startQuiz()},300)}
@@ -122,9 +123,9 @@ window.addEventListener('blur',()=>{setTimeout(()=>{if(live&&!document.hasFocus(
 document.addEventListener('contextmenu',e=>{if(live)e.preventDefault()});
 document.addEventListener('keydown',e=>{if(live&&(e.ctrlKey||e.metaKey)&&['t','n','w','c','v'].includes(e.key.toLowerCase())&&e.target.tagName!=='TEXTAREA')e.preventDefault()});
 window.addEventListener('beforeunload',e=>{if(live){e.preventDefault();e.returnValue=''}});
-function hapus(){if(confirm('Hapus semua hasil di Google Sheet?'))google.script.run.withSuccessHandler(()=>panel()).hapusHasil(G.u,G.p)}
+function hapus(){if(confirm('Hapus semua hasil di Google Sheet?'))api('hapusHasil',[G.u,G.p]).then(()=>panel())}
 function panel(r){
- if(!r){app.innerHTML='<div class="card">Memuat data dari Google Sheet...</div>';return google.script.run.withSuccessHandler(panel).withFailureHandler(e=>login('guru','Gagal memuat data: '+e.message)).ambilHasil(G.u,G.p)}
+ if(!r){app.innerHTML='<div class="card">Memuat data dari Google Sheet...</div>';return api('ambilHasil',[G.u,G.p]).then(panel).catch(e=>login('guru','Gagal memuat data: '+e.message))}
  app.innerHTML=`<div class="card"><h2>Mode Guru</h2><p class="meta">Data diambil dari Google Sheet (sheet "Hasil" berisi jawaban per nomor, sheet "CaraHitung" berisi uraian cara menghitung siswa).</p><button class="sec" onclick="login()">Keluar</button> <button class="sec" onclick="panel()">Muat ulang</button> <button class="sec" onclick="hapus()">Hapus hasil</button>
  <h3>Hasil siswa (${r.length})</h3>${r.length?T([['Waktu','Nama','Kelas','No','Skor','Benar','Terjawab']].concat(r.map(x=>[x[0],x[1],x[3],x[2],x[4],x[5],x[6]]))):'<p>Belum ada data.</p>'}
  <h3>Kunci jawaban</h3>${T([['No','Kunci','Topik','Tingkat','C']].concat(Q.map((q,i)=>[i+1,L[q[6]],q[2],q[0],q[1]])))}</div>`}
